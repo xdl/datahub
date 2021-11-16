@@ -532,11 +532,12 @@ public class DatastaxEntityService extends EntityService {
           : EntityUtils.toAspectRecord(Urn.createFromString(previousAspect.getUrn()), previousAspect.getAspect(),
               previousMetadata, getEntityRegistry());
 
-      return new RollbackResult(Urn.createFromString(urn), latestValue,
+      final Urn urnObj = Urn.createFromString(urn);
+
+      return new RollbackResult(Urn.createFromString(urn), urnObj.getEntityType(), latest.getAspect(), latestValue,
           previousValue == null ? latestValue : previousValue, latestSystemMetadata,
           previousValue == null ? null : EntityUtils.parseSystemMetadata(previousAspect.getSystemMetadata()),
-          previousAspect == null ? MetadataAuditOperation.DELETE : MetadataAuditOperation.UPDATE, isKeyAspect,
-          additionalRowsDeleted);
+          previousAspect == null ? ChangeType.DELETE : ChangeType.UPSERT, isKeyAspect, additionalRowsDeleted);
     } catch (URISyntaxException e) {
       e.printStackTrace();
     }
@@ -554,10 +555,17 @@ public class DatastaxEntityService extends EntityService {
       RollbackResult result = deleteAspect(aspectToRemove.getUrn(), aspectToRemove.getAspectName(), runId);
 
       if (result != null) {
+        Optional<AspectSpec> aspectSpec = getAspectSpec(result.entityName, result.aspectName);
+        if (!aspectSpec.isPresent()) {
+          log.error("Issue while rolling back: unknown aspect {} for entity {}", result.entityName, result.aspectName);
+          return;
+        }
+
         rowsDeletedFromEntityDeletion.addAndGet(result.additionalRowsAffected);
         removedAspects.add(aspectToRemove);
-        produceMetadataAuditEvent(result.getUrn(), result.getOldValue(), result.getNewValue(),
-            result.getOldSystemMetadata(), result.getNewSystemMetadata(), result.getOperation());
+        produceMetadataChangeLog(result.getUrn(), result.getEntityName(), result.getAspectName(), aspectSpec.get(),
+                result.getOldValue(), result.getNewValue(), result.getOldSystemMetadata(), result.getNewSystemMetadata(),
+                result.getChangeType());
       }
     });
 
@@ -578,6 +586,10 @@ public class DatastaxEntityService extends EntityService {
     SystemMetadata latestKeySystemMetadata = EntityUtils.parseSystemMetadata(latestKey.getSystemMetadata());
 
     RollbackResult result = deleteAspect(urn.toString(), keyAspectName, latestKeySystemMetadata.getRunId());
+    Optional<AspectSpec> aspectSpec = getAspectSpec(result.entityName, result.aspectName);
+    if (!aspectSpec.isPresent()) {
+      log.error("Issue while rolling back: unknown aspect {} for entity {}", result.entityName, result.aspectName);
+    }
 
     if (result != null) {
       AspectRowSummary summary = new AspectRowSummary();
@@ -589,8 +601,9 @@ public class DatastaxEntityService extends EntityService {
 
       rowsDeletedFromEntityDeletion = result.additionalRowsAffected;
       removedAspects.add(summary);
-      produceMetadataAuditEvent(result.getUrn(), result.getOldValue(), result.getNewValue(),
-          result.getOldSystemMetadata(), result.getNewSystemMetadata(), result.getOperation());
+      produceMetadataChangeLog(result.getUrn(), result.getEntityName(), result.getAspectName(), aspectSpec.get(),
+              result.getOldValue(), result.getNewValue(), result.getOldSystemMetadata(), result.getNewSystemMetadata(),
+              result.getChangeType());
     }
 
     return new RollbackRunResult(removedAspects, rowsDeletedFromEntityDeletion);
