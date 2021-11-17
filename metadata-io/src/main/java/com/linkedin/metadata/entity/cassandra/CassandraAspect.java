@@ -1,12 +1,10 @@
 package com.linkedin.metadata.entity.cassandra;
 
-import com.linkedin.metadata.entity.EntityAspect;
-
 import java.sql.Timestamp;
 
 // Dumb object for now
 
-public class CassandraAspect implements EntityAspect {
+public class CassandraAspect {
   private String urn;
   private String aspect;
   private long version;

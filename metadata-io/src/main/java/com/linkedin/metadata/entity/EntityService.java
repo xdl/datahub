@@ -123,6 +123,8 @@ public abstract class EntityService {
    */
   public abstract RecordTemplate getAspect(@Nonnull final Urn urn, @Nonnull final String aspectName, long version);
 
+  public abstract SystemMetadata getAspectSystemMetadata(@Nonnull final Urn urn, @Nonnull final String aspectName, long version);
+
   public abstract VersionedAspect getVersionedAspect(@Nonnull final Urn urn, @Nonnull final String aspectName,
       long version);
 

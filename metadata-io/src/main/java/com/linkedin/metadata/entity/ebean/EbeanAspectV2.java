@@ -1,6 +1,5 @@
 package com.linkedin.metadata.entity.ebean;
 
-import com.linkedin.metadata.entity.EntityAspect;
 import io.ebean.Model;
 import io.ebean.annotation.Index;
 import java.sql.Timestamp;
@@ -27,7 +26,7 @@ import lombok.Setter;
 @AllArgsConstructor
 @Entity
 @Table(name = "metadata_aspect_v2")
-public class EbeanAspectV2 extends Model implements EntityAspect {
+public class EbeanAspectV2 extends Model {
 
   private static final long serialVersionUID = 1L;
 

@@ -38,6 +38,5 @@ public class EbeanEntityServiceTest extends EntityServiceTestBase {
     EbeanAspectDao aspectDao = new EbeanAspectDao(ebeanServer);
     aspectDao.setConnectionValidated(true);
     _entityService = new EbeanEntityService(aspectDao, _mockProducer, _testEntityRegistry);
-    _aspectDao = aspectDao;
   }
 }

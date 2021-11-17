@@ -151,6 +151,16 @@ public class EbeanEntityService extends EntityService {
   }
 
   @Override
+  public SystemMetadata getAspectSystemMetadata(@Nonnull Urn urn, @Nonnull String aspectName, long version) {
+    log.debug(String.format("Invoked getAspect with urn: %s, aspectName: %s, version: %s", urn, aspectName, version));
+
+    version = calculateVersionNumber(urn, aspectName, version);
+    final EbeanAspectV2.PrimaryKey primaryKey = new EbeanAspectV2.PrimaryKey(urn.toString(), aspectName, version);
+    final Optional<EbeanAspectV2> maybeAspect = Optional.ofNullable(_entityDao.getAspect(primaryKey));
+    return maybeAspect.map(ebeanAspect -> EntityUtils.parseSystemMetadata(ebeanAspect.getSystemMetadata())).orElse(null);
+  }
+
+  @Override
   public VersionedAspect getVersionedAspect(@Nonnull Urn urn, @Nonnull String aspectName, long version) {
 
     log.debug(String.format("Invoked getVersionedAspect with urn: %s, aspectName: %s, version: %s", urn, aspectName,

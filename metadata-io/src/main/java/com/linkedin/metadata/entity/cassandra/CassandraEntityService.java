@@ -125,6 +125,17 @@ public class CassandraEntityService extends EntityService {
   }
 
   @Override
+  public SystemMetadata getAspectSystemMetadata(@Nonnull final Urn urn, @Nonnull final String aspectName, long version) {
+    log.debug(String.format("Invoked getAspectSystemMetadata with urn: %s, aspectName: %s, version: %s", urn, aspectName, version));
+
+    version = calculateVersionNumber(urn, aspectName, version);
+    final CassandraAspect.PrimaryKey primaryKey = new CassandraAspect.PrimaryKey(urn.toString(), aspectName, version);
+    final Optional<CassandraAspect> maybeAspect = Optional.ofNullable(_entityDao.getAspect(primaryKey));
+
+    return maybeAspect.map(aspect -> EntityUtils.parseSystemMetadata(aspect.getSystemMetadata())).orElse(null);
+  }
+
+  @Override
   @Nullable
   public RecordTemplate getAspect(@Nonnull final Urn urn, @Nonnull final String aspectName, long version) {
     log.debug(String.format("Invoked getAspect with urn: %s, aspectName: %s, version: %s", urn, aspectName, version));

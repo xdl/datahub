@@ -57,7 +57,6 @@ abstract public class EntityServiceTestBase {
     protected final EntityRegistry _testEntityRegistry =
             new MergedEntityRegistry(_snapshotEntityRegistry, _configEntityRegistry);
     protected EntityService _entityService;
-    protected AspectDao _aspectDao;
     protected EntityEventProducer _mockProducer;
 
     private static AuditStamp createTestAuditStamp() {
@@ -211,12 +210,11 @@ abstract public class EntityServiceTestBase {
         // Validate retrieval of CorpUserInfo Aspect #2
         _entityService.ingestAspect(entityUrn, aspectName, writeAspect2, TEST_AUDIT_STAMP, metadata2);
         RecordTemplate readAspectLatest = _entityService.getLatestAspect(entityUrn, aspectName);
-        EntityAspect readAspectV1 = _aspectDao.getAspect(entityUrn.toString(), aspectName, 1);
-        EntityAspect readAspectV0 = _aspectDao.getAspect(entityUrn.toString(), aspectName, 0);
 
         assertTrue(DataTemplateUtil.areEqual(writeAspect2, readAspectLatest));
-        assertTrue(DataTemplateUtil.areEqual(EntityUtils.parseSystemMetadata(readAspectV0.getSystemMetadata()), metadata2));
-        assertTrue(DataTemplateUtil.areEqual(EntityUtils.parseSystemMetadata(readAspectV1.getSystemMetadata()), metadata1));
+
+        assertTrue(DataTemplateUtil.areEqual(_entityService.getAspectSystemMetadata(entityUrn, aspectName, 0), metadata2));
+        assertTrue(DataTemplateUtil.areEqual(_entityService.getAspectSystemMetadata(entityUrn, aspectName, 1), metadata1));
 
         verify(_mockProducer, times(1)).produceMetadataAuditEvent(Mockito.eq(entityUrn), Mockito.eq(null), Mockito.any(),
                 Mockito.any(), Mockito.any(), Mockito.eq(MetadataAuditOperation.UPDATE));
@@ -254,17 +252,17 @@ abstract public class EntityServiceTestBase {
         // Validate retrieval of CorpUserInfo Aspect #2
         _entityService.ingestAspect(entityUrn, aspectName, writeAspect2, TEST_AUDIT_STAMP, metadata2);
         RecordTemplate readAspect2 = _entityService.getLatestAspect(entityUrn, aspectName);
-        EntityAspect readAspectV0 = _aspectDao.getAspect(entityUrn.toString(), aspectName, 0);
 
         assertTrue(DataTemplateUtil.areEqual(writeAspect2, readAspect2));
-        assertFalse(DataTemplateUtil.areEqual(EntityUtils.parseSystemMetadata(readAspectV0.getSystemMetadata()), metadata2));
-        assertFalse(DataTemplateUtil.areEqual(EntityUtils.parseSystemMetadata(readAspectV0.getSystemMetadata()), metadata1));
+
+        assertFalse(DataTemplateUtil.areEqual(_entityService.getAspectSystemMetadata(entityUrn, aspectName, 0), metadata2));
+        assertFalse(DataTemplateUtil.areEqual(_entityService.getAspectSystemMetadata(entityUrn, aspectName, 0), metadata1));
 
         SystemMetadata metadata3 = new SystemMetadata();
         metadata3.setLastObserved(1635792689);
         metadata3.setRunId("run-123");
 
-        assertTrue(DataTemplateUtil.areEqual(EntityUtils.parseSystemMetadata(readAspectV0.getSystemMetadata()), metadata3));
+        assertTrue(DataTemplateUtil.areEqual(_entityService.getAspectSystemMetadata(entityUrn, aspectName, 0), metadata3));
 
         verify(_mockProducer, times(1)).produceMetadataAuditEvent(Mockito.eq(entityUrn), Mockito.eq(null), Mockito.any(),
                 Mockito.any(), Mockito.any(), Mockito.eq(MetadataAuditOperation.UPDATE));

@@ -102,7 +102,6 @@ public class CassandraEntityServiceTest extends EntityServiceTestBase {
     }
 
     CassandraAspectDao aspectDao = new CassandraAspectDao(createTestServerConfig());
-    _aspectDao = aspectDao;
     _mockProducer = mock(EntityEventProducer.class);
     _entityService = new CassandraEntityService(aspectDao, _mockProducer, _testEntityRegistry);
   }
