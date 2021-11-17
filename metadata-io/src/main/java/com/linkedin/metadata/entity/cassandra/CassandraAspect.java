@@ -1,4 +1,4 @@
-package com.linkedin.metadata.entity.datastax;
+package com.linkedin.metadata.entity.cassandra;
 
 import com.linkedin.metadata.entity.EntityAspect;
 
@@ -6,7 +6,7 @@ import java.sql.Timestamp;
 
 // Dumb object for now
 
-public class DatastaxAspect implements EntityAspect {
+public class CassandraAspect implements EntityAspect {
   private String urn;
   private String aspect;
   private long version;
@@ -75,14 +75,14 @@ public class DatastaxAspect implements EntityAspect {
     return new PrimaryKey(this.urn, this.aspect, this.version);
   }
 
-  public DatastaxAspect(String urn,
-                        String aspect,
-                        long version,
-                        String metadata,
-                        String systemMetadata,
-                        Timestamp createdOn,
-                        String createdBy,
-                        String createdFor) {
+  public CassandraAspect(String urn,
+                         String aspect,
+                         long version,
+                         String metadata,
+                         String systemMetadata,
+                         Timestamp createdOn,
+                         String createdBy,
+                         String createdFor) {
     this.urn = urn;
     this.aspect = aspect;
     this.version = version;

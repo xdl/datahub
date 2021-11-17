@@ -1,4 +1,4 @@
-package com.linkedin.metadata.entity.datastax;
+package com.linkedin.metadata.entity.cassandra;
 
 import com.codahale.metrics.Timer;
 import com.datastax.oss.driver.api.core.cql.ResultSet;
@@ -54,14 +54,14 @@ import lombok.extern.slf4j.Slf4j;
 import static com.linkedin.metadata.Constants.*;
 
 @Slf4j
-public class DatastaxEntityService extends EntityService {
+public class CassandraEntityService extends EntityService {
 
-  private final DatastaxAspectDao _entityDao;
+  private final CassandraAspectDao _entityDao;
   private Boolean _alwaysEmitAuditEvent = false;
   private static final int DEFAULT_MAX_CONDITIONAL_RETRY = 3;
 
-  public DatastaxEntityService(@Nonnull final DatastaxAspectDao entityDao, @Nonnull final EntityEventProducer eventProducer,
-      @Nonnull final EntityRegistry entityRegistry) {
+  public CassandraEntityService(@Nonnull final CassandraAspectDao entityDao, @Nonnull final EntityEventProducer eventProducer,
+                                @Nonnull final EntityRegistry entityRegistry) {
     super(eventProducer, entityRegistry);
     _entityDao = entityDao;
   }
@@ -74,10 +74,10 @@ public class DatastaxEntityService extends EntityService {
     log.debug(String.format("Invoked getLatestAspects with urns: %s, aspectNames: %s", urns, aspectNames));
 
     // Create DB keys
-    final Set<DatastaxAspect.PrimaryKey> dbKeys = urns.stream().map(urn -> {
+    final Set<CassandraAspect.PrimaryKey> dbKeys = urns.stream().map(urn -> {
       final Set<String> aspectsToFetch = aspectNames.isEmpty() ? getEntityAspectNames(urn) : aspectNames;
       return aspectsToFetch.stream()
-          .map(aspectName -> new DatastaxAspect.PrimaryKey(urn.toString(), aspectName, ASPECT_LATEST_VERSION))
+          .map(aspectName -> new CassandraAspect.PrimaryKey(urn.toString(), aspectName, ASPECT_LATEST_VERSION))
           .collect(Collectors.toList());
     }).flatMap(List::stream).collect(Collectors.toSet());
 
@@ -130,8 +130,8 @@ public class DatastaxEntityService extends EntityService {
     log.debug(String.format("Invoked getAspect with urn: %s, aspectName: %s, version: %s", urn, aspectName, version));
 
     version = calculateVersionNumber(urn, aspectName, version);
-    final DatastaxAspect.PrimaryKey primaryKey = new DatastaxAspect.PrimaryKey(urn.toString(), aspectName, version);
-    final Optional<DatastaxAspect> maybeAspect = Optional.ofNullable(_entityDao.getAspect(primaryKey));
+    final CassandraAspect.PrimaryKey primaryKey = new CassandraAspect.PrimaryKey(urn.toString(), aspectName, version);
+    final Optional<CassandraAspect> maybeAspect = Optional.ofNullable(_entityDao.getAspect(primaryKey));
 
     return maybeAspect.map(
         aspect -> EntityUtils.toAspectRecord(urn, aspectName, aspect.getMetadata(), getEntityRegistry())).orElse(null);
@@ -147,7 +147,7 @@ public class DatastaxEntityService extends EntityService {
 
     version = calculateVersionNumber(urn, aspectName, version);
 
-    final Optional<DatastaxAspect> maybeAspect = Optional.ofNullable(_entityDao.getAspect(urn.toString(), aspectName, version));
+    final Optional<CassandraAspect> maybeAspect = Optional.ofNullable(_entityDao.getAspect(urn.toString(), aspectName, version));
 
     RecordTemplate aspect =
         maybeAspect.map(a -> EntityUtils.toAspectRecord(urn, aspectName, a.getMetadata(), getEntityRegistry()))
@@ -219,9 +219,9 @@ public class DatastaxEntityService extends EntityService {
     return updatedValue;
   }
 
-  private int getNextVersion(List<DatastaxAspect> aspectVersions) {
+  private int getNextVersion(List<CassandraAspect> aspectVersions) {
     int maxVersion = -1;
-    for (DatastaxAspect da : aspectVersions) {
+    for (CassandraAspect da : aspectVersions) {
       int version  = (int) da.getVersion();
       if (version > maxVersion) {
         maxVersion = version;
@@ -239,11 +239,11 @@ public class DatastaxEntityService extends EntityService {
     return _entityDao.runInConditionalWithRetry(() -> {
 
       // 1. Fetch all versions of the aspect.
-      final List<DatastaxAspect> aspectVersions = _entityDao.getAllAspects(urn.toString(), aspectName);
+      final List<CassandraAspect> aspectVersions = _entityDao.getAllAspects(urn.toString(), aspectName);
       final int nextVersion = getNextVersion(aspectVersions);
 
       // 2. Compare the latest existing and new.
-      final DatastaxAspect latest = aspectVersions.size() > 0 ? aspectVersions.get(0) : null;
+      final CassandraAspect latest = aspectVersions.size() > 0 ? aspectVersions.get(0) : null;
       final RecordTemplate oldValue = latest == null ? null
               : EntityUtils.toAspectRecord(urn, aspectName, latest.getMetadata(), getEntityRegistry());
       final RecordTemplate newValue = updateLambda.apply(Optional.ofNullable(oldValue));
@@ -252,7 +252,7 @@ public class DatastaxEntityService extends EntityService {
         SystemMetadata latestSystemMetadata = EntityUtils.parseSystemMetadata(latest.getSystemMetadata());
         latestSystemMetadata.setLastObserved(providedSystemMetadata.getLastObserved());
 
-        final DatastaxAspect latestUpdated = new DatastaxAspect(latest.getUrn(), latest.getAspect(),
+        final CassandraAspect latestUpdated = new CassandraAspect(latest.getUrn(), latest.getAspect(),
                 latest.getVersion(), latest.getMetadata(), RecordUtils.toJsonString(latestSystemMetadata), latest.getCreatedOn(),
                 latest.getCreatedBy(), latest.getCreatedFor());
 
@@ -300,7 +300,7 @@ public class DatastaxEntityService extends EntityService {
 
     final UpdateAspectResult result = _entityDao.runInConditionalWithRetry(() -> {
 
-      final DatastaxAspect oldAspect = _entityDao.getAspect(urn.toString(), aspectName, version);
+      final CassandraAspect oldAspect = _entityDao.getAspect(urn.toString(), aspectName, version);
 
       final RecordTemplate oldValue = oldAspect == null ? null
               : EntityUtils.toAspectRecord(urn, aspectName, oldAspect.getMetadata(), getEntityRegistry());
@@ -314,7 +314,7 @@ public class DatastaxEntityService extends EntityService {
 
       log.debug(String.format("Updating aspect with name %s, urn %s", aspectName, urn));
 
-      DatastaxAspect aspectToSave = new DatastaxAspect(urn.toString(), aspectName, version,
+      CassandraAspect aspectToSave = new CassandraAspect(urn.toString(), aspectName, version,
               RecordUtils.toJsonString(value), RecordUtils.toJsonString(newSystemMetadata),
               new Timestamp(auditStamp.getTime()), auditStamp.getActor().toString(),
               auditStamp.hasImpersonator() ? auditStamp.getImpersonator().toString() : null);
@@ -417,7 +417,7 @@ public class DatastaxEntityService extends EntityService {
 
     if (!aspectSpec.isTimeseries()) {
       Timer.Context ingestToLocalDBTimer = MetricUtils.timer(this.getClass(), "ingestProposalToLocalDB").time();
-      DatastaxEntityService.UpdateAspectResult result =
+      CassandraEntityService.UpdateAspectResult result =
               ingestAspectToLocalDB(entityUrn, metadataChangeProposal.getAspectName(), ignored -> aspect, auditStamp,
                       systemMetadata, DEFAULT_MAX_CONDITIONAL_RETRY);
       ingestToLocalDBTimer.stop();
@@ -471,7 +471,7 @@ public class DatastaxEntityService extends EntityService {
     int additionalRowsDeleted = 0;
 
     // 1. Fetch the latest existing version of the aspect.
-    final DatastaxAspect latest = _entityDao.getLatestAspect(urn, aspectName);
+    final CassandraAspect latest = _entityDao.getLatestAspect(urn, aspectName);
 
     // 1.1 If no latest exists, skip this aspect
     if (latest == null) {
@@ -487,7 +487,7 @@ public class DatastaxEntityService extends EntityService {
 
     // 3. Fetch what precedes it, if there is another aspect
     final long maxVersion = _entityDao.getMaxVersion(urn, aspectName);
-    DatastaxAspect previousAspect = null;
+    CassandraAspect previousAspect = null;
     String previousMetadata = null;
     if (maxVersion > 0) {
       previousAspect = _entityDao.getAspect(urn, aspectName, maxVersion);
@@ -578,7 +578,7 @@ public class DatastaxEntityService extends EntityService {
     Integer rowsDeletedFromEntityDeletion = 0;
 
     String keyAspectName = getKeyAspectName(urn);
-    DatastaxAspect latestKey = _entityDao.getLatestAspect(urn.toString(), keyAspectName);
+    CassandraAspect latestKey = _entityDao.getLatestAspect(urn.toString(), keyAspectName);
     if (latestKey == null || latestKey.getSystemMetadata() == null) {
       return new RollbackRunResult(removedAspects, rowsDeletedFromEntityDeletion);
     }
@@ -612,11 +612,11 @@ public class DatastaxEntityService extends EntityService {
   @Override
   public Boolean exists(Urn urn) {
     final Set<String> aspectsToFetch = getEntityAspectNames(urn);
-    final List<DatastaxAspect.PrimaryKey> dbKeys = aspectsToFetch.stream()
-            .map(aspectName -> new DatastaxAspect.PrimaryKey(urn.toString(), aspectName, ASPECT_LATEST_VERSION))
+    final List<CassandraAspect.PrimaryKey> dbKeys = aspectsToFetch.stream()
+            .map(aspectName -> new CassandraAspect.PrimaryKey(urn.toString(), aspectName, ASPECT_LATEST_VERSION))
             .collect(Collectors.toList());
 
-    Map<DatastaxAspect.PrimaryKey, DatastaxAspect> aspects = _entityDao.batchGet(new HashSet(dbKeys));
+    Map<CassandraAspect.PrimaryKey, CassandraAspect> aspects = _entityDao.batchGet(new HashSet(dbKeys));
     return aspects.values().stream().anyMatch(aspect -> aspect != null);
   }
 

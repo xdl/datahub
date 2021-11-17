@@ -10,9 +10,9 @@ import com.linkedin.data.template.RecordTemplate;
 import com.linkedin.identity.CorpUserInfo;
 import com.linkedin.metadata.query.ListUrnsResult;
 import com.linkedin.metadata.utils.PegasusUtils;
-import com.linkedin.metadata.entity.datastax.DatastaxAspect;
-import com.linkedin.metadata.entity.datastax.DatastaxAspectDao;
-import com.linkedin.metadata.entity.datastax.DatastaxEntityService;
+import com.linkedin.metadata.entity.cassandra.CassandraAspect;
+import com.linkedin.metadata.entity.cassandra.CassandraAspectDao;
+import com.linkedin.metadata.entity.cassandra.CassandraEntityService;
 import com.linkedin.metadata.event.EntityEventProducer;
 import com.linkedin.metadata.key.CorpUserKey;
 import com.linkedin.mxe.SystemMetadata;
@@ -36,7 +36,7 @@ import static org.testng.Assert.assertEquals;
 import static org.testng.Assert.assertTrue;
 
 
-public class DatastaxEntityServiceTest extends EntityServiceTestBase {
+public class CassandraEntityServiceTest extends EntityServiceTestBase {
 
   private CassandraContainer _cassandraContainer;
   private static final String KEYSPACE_NAME = "test";
@@ -67,7 +67,7 @@ public class DatastaxEntityServiceTest extends EntityServiceTestBase {
                               + "entity varchar, \n"
                               + "PRIMARY KEY (urn,aspect,version));",
                       KEYSPACE_NAME,
-                      DatastaxAspect.TABLE_NAME));
+                      CassandraAspect.TABLE_NAME));
 
       List<KeyspaceMetadata> keyspaces = session.getCluster().getMetadata().getKeyspaces();
       List<KeyspaceMetadata> filteredKeyspaces = keyspaces
@@ -95,16 +95,16 @@ public class DatastaxEntityServiceTest extends EntityServiceTestBase {
   @BeforeMethod
   public void setupTest() {
     try (Session session = _cassandraContainer.getCluster().connect()) {
-      session.execute(String.format("TRUNCATE %s.%s;", KEYSPACE_NAME, DatastaxAspect.TABLE_NAME));
-      List<Row> rs = session.execute(String.format("SELECT * FROM %s.%s;", KEYSPACE_NAME, DatastaxAspect.TABLE_NAME))
+      session.execute(String.format("TRUNCATE %s.%s;", KEYSPACE_NAME, CassandraAspect.TABLE_NAME));
+      List<Row> rs = session.execute(String.format("SELECT * FROM %s.%s;", KEYSPACE_NAME, CassandraAspect.TABLE_NAME))
               .all();
       assertEquals(rs.size(), 0);
     }
 
-    DatastaxAspectDao aspectDao = new DatastaxAspectDao(createTestServerConfig());
+    CassandraAspectDao aspectDao = new CassandraAspectDao(createTestServerConfig());
     _aspectDao = aspectDao;
     _mockProducer = mock(EntityEventProducer.class);
-    _entityService = new DatastaxEntityService(aspectDao, _mockProducer, _testEntityRegistry);
+    _entityService = new CassandraEntityService(aspectDao, _mockProducer, _testEntityRegistry);
   }
 
   @Test
